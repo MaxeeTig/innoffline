@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Валидатор ИНН</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .radio-group {
+            margin: 15px 0;
+        }
+        .radio-option {
+            margin-right: 15px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .valid {
+            background-color: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        .invalid {
+            background-color: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Проверка ИНН</h1>
+        
+        <div class="form-group">
+            <label for="inn">Введите ИНН:</label>
+            <input type="text" id="inn" placeholder="Введите 10 или 12 цифр">
+        </div>
+        
+        <div class="radio-group">
+            <label>Тип налогоплательщика:</label>
+            <label class="radio-option">
+                <input type="radio" name="innType" value="legal" checked> Юридическое лицо (10 цифр)
+            </label>
+            <label class="radio-option">
+                <input type="radio" name="innType" value="private"> Физическое лицо/ИП (12 цифр)
+            </label>
+        </div>
+        
+        <button onclick="validateINN()">Проверить</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function validateINN() {
+            const innInput = document.getElementById('inn').value.trim();
+            const innType = document.querySelector('input[name="innType"]:checked').value;
+            const resultDiv = document.getElementById('result');
+            
+            // Clear previous result
+            resultDiv.style.display = 'none';
+            
+            // Basic validation
+            if (!innInput) {
+                showResult('Пожалуйста, введите ИНН', false);
+                return;
+            }
+            
+            // Check if input contains only digits
+            if (!/^\d+$/.test(innInput)) {
+                showResult('ИНН должен содержать только цифры', false);
+                return;
+            }
+            
+            // Check length based on type
+            if (innType === 'legal' && innInput.length !== 10) {
+                showResult('ИНН юридического лица должен содержать 10 цифр', false);
+                return;
+            }
+            
+            if (innType === 'private' && innInput.length !== 12) {
+                showResult('ИНН физического лица/ИП должен содержать 12 цифр', false);
+                return;
+            }
+            
+            // Validate INN
+            let isValid = false;
+            if (innType === 'legal') {
+                isValid = validateLegalEntityINN(innInput);
+            } else {
+                isValid = validatePrivatePersonINN(innInput);
+            }
+            
+            if (isValid) {
+                showResult('ИНН корректный', true);
+            } else {
+                showResult('ИНН некорректный', false);
+            }
+        }
+        
+        function validateLegalEntityINN(inn) {
+            // Check length
+            if (inn.length !== 10) return false;
+            
+            // Weight coefficients for 10-digit INN
+            const weights = [2, 4, 10, 3, 5, 9, 4, 6, 8, 0];
+            
+            // Calculate control sum
+            let sum = 0;
+            for (let i = 0; i < 10; i++) {
+                sum += parseInt(inn[i]) * weights[i];
+            }
+            
+            // Calculate control number
+            let controlNumber = sum % 11;
+            if (controlNumber > 9) {
+                controlNumber = controlNumber % 10;
+            }
+            
+            // Compare with the last digit
+            return controlNumber === parseInt(inn[9]);
+        }
+        
+        function validatePrivatePersonINN(inn) {
+            // Check length
+            if (inn.length !== 12) return false;
+            
+            // Weight coefficients for first control number (11th digit)
+            const weights1 = [7, 2, 4, 10, 3, 5, 9, 4, 6, 8, 0];
+            
+            // Calculate first control sum
+            let sum1 = 0;
+            for (let i = 0; i < 11; i++) {
+                sum1 += parseInt(inn[i]) * weights1[i];
+            }
+            
+            // Calculate first control number
+            let controlNumber1 = sum1 % 11;
+            if (controlNumber1 > 9) {
+                controlNumber1 = controlNumber1 % 10;
+            }
+            
+            // Check first control number
+            if (controlNumber1 !== parseInt(inn[10])) {
+                return false;
+            }
+            
+            // Weight coefficients for second control number (12th digit)
+            const weights2 = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8, 0];
+            
+            // Calculate second control sum
+            let sum2 = 0;
+            for (let i = 0; i < 12; i++) {
+                sum2 += parseInt(inn[i]) * weights2[i];
+            }
+            
+            // Calculate second control number
+            let controlNumber2 = sum2 % 11;
+            if (controlNumber2 > 9) {
+                controlNumber2 = controlNumber2 % 10;
+            }
+            
+            // Compare with the last digit
+            return controlNumber2 === parseInt(inn[11]);
+        }
+        
+        function showResult(message, isValid) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = isValid ? 'valid' : 'invalid';
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
